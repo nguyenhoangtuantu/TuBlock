@@ -201,7 +201,9 @@
         div:has(> img[src*="/ads/"]),
         div:has(> video[src*="/ads/"]),
         div:has(> video:has(source[src*="/ads/"])),
-        div:has(> video:has(source[src*="cm88"])) {
+        div:has(> video:has(source[src*="cm88"])),
+        /* Stream Guard AdBlock notice modal / overlay neutralization */
+        .stream-guard:not([data-session-lock="true"]) {
           display: none !important;
           visibility: hidden !important;
           pointer-events: none !important;
@@ -375,8 +377,9 @@
     }
   }, true);
 
-  // 7. Anti-Adblock Defuser (Fake standard honeypot objects)
+  // 7. Anti-Adblock & Stream Guard Defuser (Multi-Layer Protection)
   try {
+    // 7.1 Legacy detector honeypots (Sitexw FuckAdBlock / BlockAdBlock / canRunAds)
     Object.defineProperties(window, {
       canRunAds: { value: true, writable: false, configurable: true },
       isAdBlocked: { value: false, writable: false, configurable: true },
@@ -406,7 +409,186 @@
     window.blockAdBlock = fakeDetector;
     window.FuckAdBlock = function() { return fakeDetector; };
     window.BlockAdBlock = function() { return fakeDetector; };
-  } catch(e) {}
+
+    // 7.2 Stream Guard Bootstrap Defuser (Neutralize anti_adblock at source)
+    function sanitizeBootstrapConfig(val) {
+      if (!val || typeof val !== 'string') return val;
+      if (val.includes('"browserGuard"') || val.includes('anti_adblock') || val.includes('detect_devtools')) {
+        try {
+          const parsed = JSON.parse(val);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.browserGuard && typeof parsed.browserGuard === 'object') {
+              parsed.browserGuard.anti_adblock = false;
+              parsed.browserGuard.detect_devtools = false;
+              return JSON.stringify(parsed);
+            }
+          }
+        } catch(e) {}
+      }
+      return val;
+    }
+
+    // Intercept JSON.parse so any parsed bootstrap object has anti_adblock: false
+    const origJsonParse = JSON.parse;
+    JSON.parse = function(text, reviver) {
+      const res = origJsonParse.apply(this, arguments);
+      if (res && typeof res === 'object' && res.browserGuard && typeof res.browserGuard === 'object') {
+        res.browserGuard.anti_adblock = false;
+        res.browserGuard.detect_devtools = false;
+      }
+      return res;
+    };
+
+    // Intercept #stream-bootstrap script textContent getter and setter
+    const scriptProto = HTMLScriptElement.prototype;
+    const nodeProto = Node.prototype;
+    const origTextDesc = Object.getOwnPropertyDescriptor(scriptProto, 'textContent') ||
+                         Object.getOwnPropertyDescriptor(nodeProto, 'textContent');
+
+    if (origTextDesc && origTextDesc.set && origTextDesc.get) {
+      Object.defineProperty(scriptProto, 'textContent', {
+        get() {
+          const val = origTextDesc.get.call(this);
+          if (this.id === 'stream-bootstrap') {
+            return sanitizeBootstrapConfig(val);
+          }
+          return val;
+        },
+        set(val) {
+          if (this.id === 'stream-bootstrap') {
+            val = sanitizeBootstrapConfig(val);
+          }
+          return origTextDesc.set.call(this, val);
+        },
+        configurable: true,
+        enumerable: true
+      });
+    }
+
+    // Sanitize immediately if #stream-bootstrap already present in DOM
+    const existingBootstrap = document.getElementById('stream-bootstrap');
+    if (existingBootstrap && existingBootstrap.textContent) {
+      existingBootstrap.textContent = sanitizeBootstrapConfig(existingBootstrap.textContent);
+    }
+
+    // 7.3 Stream Guard CSS Probe Defuser (Proxy getComputedStyle & getBoundingClientRect)
+    const AD_PROBE_REGEX = /adsbox|adsbygoogle|pub_300x250|ad_container|ad-banner|ad-placement|ad_leaderboard/i;
+
+    const origGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = function(el, pseudo) {
+      const style = origGetComputedStyle.apply(this, arguments);
+      if (el && el.className && typeof el.className === 'string' && AD_PROBE_REGEX.test(el.className)) {
+        return new Proxy(style, {
+          get(target, prop) {
+            if (prop === 'display' && target.display === 'none') return 'block';
+            if (prop === 'visibility' && (target.visibility === 'hidden' || target.visibility === 'collapse')) return 'visible';
+            if (prop === 'opacity' && target.opacity === '0') return '1';
+            return Reflect.get(target, prop);
+          }
+        });
+      }
+      return style;
+    };
+
+    const origGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function() {
+      const rect = origGetBoundingClientRect.apply(this, arguments);
+      if (this.className && typeof this.className === 'string' && AD_PROBE_REGEX.test(this.className)) {
+        if (rect.width < 1 || rect.height < 1) {
+          return {
+            x: -10000,
+            y: 0,
+            width: 2,
+            height: 2,
+            top: 0,
+            right: -9998,
+            bottom: 2,
+            left: -10000,
+            toJSON() { return this; }
+          };
+        }
+      }
+      return rect;
+    };
+
+    // 7.4 Stream Guard Network Probe Defuser (Simulate ad_header.js load & fetch)
+    const origScriptSrcDesc = Object.getOwnPropertyDescriptor(scriptProto, 'src');
+    if (origScriptSrcDesc && origScriptSrcDesc.set && origScriptSrcDesc.get) {
+      Object.defineProperty(scriptProto, 'src', {
+        get() {
+          return origScriptSrcDesc.get.call(this);
+        },
+        set(url) {
+          if (typeof url === 'string' && /ad_header\.js/i.test(url)) {
+            const verMatch = url.match(/ver=([a-zA-Z0-9_-]+)/);
+            const ver = verMatch ? verMatch[1] : 'guard-7';
+            this.setAttribute('data-stream-check', ver);
+            setTimeout(() => {
+              if (typeof this.onload === 'function') {
+                try { this.onload(new Event('load')); } catch(e) {}
+              }
+              this.dispatchEvent(new Event('load'));
+            }, 0);
+          }
+          return origScriptSrcDesc.set.call(this, url);
+        },
+        configurable: true,
+        enumerable: true
+      });
+    }
+
+    if (typeof window.fetch === 'function') {
+      const origFetch = window.fetch;
+      window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        if (typeof url === 'string' && /ad_header\.js/i.test(url)) {
+          const verMatch = url.match(/ver=([a-zA-Z0-9_-]+)/);
+          const ver = verMatch ? verMatch[1] : 'guard-7';
+          return Promise.resolve(new Response(
+            `/* stream-guard-probe:7 */ document.currentScript.setAttribute("data-stream-check", "${ver}");`,
+            {
+              status: 200,
+              statusText: 'OK',
+              headers: { 'Content-Type': 'application/javascript' }
+            }
+          ));
+        }
+        return origFetch.apply(this, arguments);
+      };
+    }
+
+    // 7.5 DevTools Session Lock Neutralizer (Protect against persistent session lock)
+    if (window.sessionStorage) {
+      const origSessionGet = Storage.prototype.getItem;
+      const origSessionSet = Storage.prototype.setItem;
+      Storage.prototype.getItem = function(key) {
+        if (key === 'stream-guard:devtools-session-lock:v1') {
+          return null;
+        }
+        return origSessionGet.apply(this, arguments);
+      };
+      Storage.prototype.setItem = function(key, val) {
+        if (key === 'stream-guard:devtools-session-lock:v1') {
+          return;
+        }
+        return origSessionSet.apply(this, arguments);
+      };
+    }
+
+    // 7.6 Cross-frame Message Guard (Parent <-> Iframe handshake protection)
+    window.addEventListener('message', (e) => {
+      try {
+        if (e && e.data && typeof e.data === 'object' && e.data.type === 'stream-parent-state') {
+          if (e.data.parentAdblock === 'blocked') {
+            e.data.parentAdblock = 'clear';
+          }
+        }
+      } catch(err) {}
+    }, true);
+
+  } catch(e) {
+    console.warn('[AdBlockShield] Anti-adblock defuser setup warning:', e);
+  }
 
   // 8. Continuous DOM Cleaner: Target First-Party Ad Components & Overlays Safely
   function cleanAdsAndOverlays() {
@@ -438,8 +620,8 @@
       }
     });
 
-    // C. Clean ad slots by ID & aria-label
-    document.querySelectorAll('[id*="bottom-slot"], [id*="bottom-banner"], [id*="banner-728x90"], .video-ad-wrap, [aria-label*="quang cao" i], [aria-label*="quảng cáo" i]').forEach(el => {
+    // C. Clean ad slots by ID & aria-label & Stream Guard ad notice
+    document.querySelectorAll('[id*="bottom-slot"], [id*="bottom-banner"], [id*="banner-728x90"], .video-ad-wrap, .stream-guard:not([data-session-lock="true"]), [aria-label*="quang cao" i], [aria-label*="quảng cáo" i]').forEach(el => {
       hideSafely(el);
     });
 
