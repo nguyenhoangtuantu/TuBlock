@@ -73,7 +73,7 @@ Tuân thủ nghiêm ngặt **Điều 5(a) của Giấy phép GNU General Public 
   - `adblock-shield-main.js`: Bổ sung module bảo vệ chuyên dụng chống popunder, tab-under, overlay và first-party ads (được cấp phép theo GPLv3).
   - `abp-background.js` & `adblock-options-premiumproxy.js`: Cập nhật cờ cấu hình phía client (`hasPremium`, `isActiveLicense`) để kích hoạt cục bộ các tính năng giao diện (Themes, Image Swap, Cookie Cutter).
   - `button/header.js` & bộ SVG icons: Cập nhật logo và giao diện người dùng sang thương hiệu TuBlock nhằm tuân thủ Điều 7(e) về quyền nhãn hiệu.
-  - `_locales/*/messages.json`: Đồng bộ tên tiện ích sang TuBlock trên toàn bộ gói ngôn ngữ.
+  - `_locales/en_US/messages.json`: Tối ưu hóa dung lượng extension, loại bỏ 33 gói ngôn ngữ thừa và tinh gọn giữ lại duy nhất tiếng Anh (`en_US`) với đầy đủ 856 khóa giao diện chuẩn TuBlock.
 
 ---
 
@@ -135,7 +135,7 @@ Tuân thủ nghiêm ngặt **Điều 5(a) của Giấy phép GNU General Public 
   - `adblock-shield-main.js`: Created and integrated a dedicated GPLv3 anti-circumvention engine running in `MAIN` world at `document_start`.
   - `abp-background.js` & `adblock-options-premiumproxy.js`: Adjusted local UI preference flags (`hasPremium`, `isActiveLicense`) to activate client-side features without remote payment server verification.
   - `button/header.js` & SVG theme icons: Rebranded interface assets to TuBlock to prevent confusion and respect original brand trademarks under Section 7(e).
-  - `_locales/*/messages.json`: Updated extension name strings to TuBlock across all supported locales.
+  - `_locales/en_US/messages.json`: Streamlined extension footprint by pruning 33 redundant locale bundles, preserving exclusively English (`en_US`) with all 856 UI translation keys.
 
 ---
 

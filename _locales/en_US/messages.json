@@ -3553,5 +3553,45 @@
   "unsupported_browser_banner": {
     "message": "Your browser version is no longer supported. Please upgrade your browser to continue receiving extension updates.",
     "description": "Banner shown to users whose browser version is below the extension's minimum supported version"
+  },
+  "adblock_will_block_ads_again": {
+    "message": "If clicked, TuBlock will block ads again.",
+    "description": "Second sentence in the aria-label of the pop-up menu action to resume blocking ads."
+  },
+  "adblock_will_pause_on_this_site": {
+    "message": "If clicked, TuBlock will stop blocking ads on this site.",
+    "description": "Second sentence in the aria-label of the pop-up menu action to pause blocking ads on this site."
+  },
+  "blocked_ads": {
+    "message": "Blocked ads:",
+    "description": "Title for toolbar icon menu section showing number of ads blocked"
+  },
+  "always": {
+    "message": "Always",
+    "description": "The button text on the popup menu"
+  },
+  "pause_on_this_site": {
+    "message": "Pause on this site:",
+    "description": "First sentence in the aria-label of the pop-up menu action to pause blocking ads on this site. This will be followed by the options 'Once' and 'Always'"
+  },
+  "disabled_by_filter_lists": {
+    "message": "Sorry, TuBlock is disabled on this page by one of your filter lists.",
+    "description": "Message shown when a user tries to un-allowlist a web page that has been allowlisted by a rule in a subscribed filter list."
+  },
+  "once": {
+    "message": "Once",
+    "description": "The button text on the popup menu"
+  },
+  "resume_blocking_ads_period": {
+    "message": "Resume blocking ads.",
+    "description": "First sentence in the aria-label of the pop-up menu action to resume blocking ads."
+  },
+  "distraction_control_description_I": {
+    "message": "Take control of your browser and browse the way you want to.",
+    "description": "Description of the Premium filter lists"
+  },
+  "distraction_control_description_II": {
+    "message": "Say goodbye to newsletter pop-ups, floating videos, site notifications and survey requests with Enhanced Distraction Control.",
+    "description": "Description of the Premium filter lists"
   }
 }

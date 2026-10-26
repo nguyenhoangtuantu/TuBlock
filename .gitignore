@@ -1,0 +1,6 @@
+# Chromium FlatBuffers build cache
+_metadata/
+
+# OS and Editor artifacts
+.DS_Store
+*.log
