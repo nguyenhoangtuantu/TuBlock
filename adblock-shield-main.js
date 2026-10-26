@@ -71,6 +71,10 @@
   // Safe DOM hiding utility — NEVER call node.remove() on React-managed nodes!
   function hideSafely(node) {
     if (!node || !node.style) return;
+    // CRITICAL SAFEGUARD: Never hide real media players or their container wrappers
+    if (node.id === 'player' || (node.classList && (node.classList.contains('player-wrapper') || node.classList.contains('plyr') || node.classList.contains('plyr--video')))) {
+      return;
+    }
     try {
       node.style.setProperty('display', 'none', 'important');
       node.style.setProperty('visibility', 'hidden', 'important');
@@ -89,6 +93,8 @@
   // Defuses site-native ad hooks like chophim.app useShouldShowBanners, popunder-last-shown, and xnhau lastPopunderTime
   try {
     const forever = String(Date.now() + 315360000000); // 10 years in future
+    const maxPopInfo = JSON.stringify({ hit: 999999, updatetime: Date.now() + 315360000000, currentDate: Date.now() + 315360000000 });
+
     window.localStorage.setItem('chophim:popunder-last-shown', forever);
     window.localStorage.setItem('popunder-last-shown', forever);
     window.localStorage.setItem('chophim:banner-blocked-until', forever);
@@ -100,21 +106,58 @@
     window.localStorage.setItem('__PPU_ppucnt', '999999');
     window.localStorage.setItem('__ppu_seen', '999999');
     window.localStorage.setItem('pop_seen', forever);
+    window.localStorage.setItem('popunder', maxPopInfo);
+    window.localStorage.setItem('popwatch', maxPopInfo);
+
+    // Host-specific pre-seeding (e.g. ghienphimz.life, coiphim.show, etc.)
+    const currentHost = window.location.host;
+    if (currentHost) {
+      ['popupfullv2', 'popupfullv2_2', 'popupfullv2_3', 'popupfull', 'popunder', 'popwatch'].forEach(k => {
+        try {
+          if (k.includes('popunder') || k.includes('popwatch')) {
+            window.localStorage.setItem(currentHost + '_' + k, maxPopInfo);
+          } else {
+            window.localStorage.setItem(currentHost + '_' + k, forever);
+          }
+        } catch(err) {}
+      });
+    }
+
+    // Dynamic Storage proxy to falsify any popup/ad interval or frequency check automatically
+    const origGetItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function(key) {
+      if (typeof key === 'string') {
+        if (/(_popupfull|popunder|popwatch|popup_seen|ad_seen|lastPopunder|banner-blocked|popup-ad-dismissed)/i.test(key)) {
+          if (/popunder|popwatch/i.test(key)) {
+            return JSON.stringify({ hit: 999999, updatetime: Date.now() + 315360000000, currentDate: Date.now() + 315360000000 });
+          }
+          return String(Date.now() + 315360000000);
+        }
+      }
+      return origGetItem.apply(this, arguments);
+    };
+
     window.dispatchEvent(new Event('chophim:banner-blocked'));
     window.dispatchEvent(new Event('chophim:popup-ads-dismissed'));
+  } catch(e) {}
+
+  // 1.5 Neuter streaming site ad/popup caller functions globally
+  try {
+    window.popupWatchButton = function() {};
   } catch(e) {}
 
   // 2. Comprehensive Spam / Gambling / Ad Patterns
   const SPAM_PATTERNS = [
     /\b\d{1,3}bet\w*/i, // 11bet, 789bet, 88bet, 188bet...
     /\b789b\w*/i,       // 789b668.me...
-    /\b(cm88|hb88|ok88|mb66|sumvip|sumpro|sumclub|78win|fc88|qq88|hi88|s8|i9|i9bet|iwin|b52|sunwin|go88|rikvip|kubet|thabet|shbet|new88|jun88|fb88|w88|bk8|dafabet|m88|fun88|v9bet|fabet|u888|ad88)\w*/i,
-    /\b(keonhacai|nhacai|soikeo|tylekeo|bongda|cacuoc|casino|nohu|taixiu|xocdia|banca|slot)\b/i,
-    /\b(linkroyal|workers\.dev\/chophim|tinyurl\.com|bit\.ly|hpasoj|154\.82\.|adready\.vip|thlink\.cc)/i,
+    /\b(cm88|hb88|ok88|mb66|sumvip|sumpro|sumclub|78win|fc88|qq88|hi88|s8|i9|i9bet|i9\.top|iwin|b52|sunwin|go88|go8|rikvip|kubet|thabet|shbet|new88|jun88|fb88|w88|bk8|dafabet|m88|fun88|v9bet|fabet|u888|ad88|ok9|ok999|ok9vip|tin888|tinv888|bom88|188lux|vsbet|6789x|mv66|vuabet|vuabet88|ai88|ai88bet|3bet|treeb|hitclub|soc88|may88|sin88|red88|debett|zbet|oxbet|five88|lucky88|sky88|dabet|sv88|ta88|nbet|uk88|f8bet|ee88|tk88|onbet|vn88|vg99|mu9|qh88|qqlive|chola|79king|k9win|mig8|antlive)\w*/i,
+    /\b(keonhacai|nhacai|soikeo|tylekeo|bongda|cacuoc|casino|nohu|taixiu|xocdia|banca|slot|cuoc|cược|lixi|quayhu|linknhacai)\b/i,
+    /\b(linkroyal|workers\.dev\/chophim|workers\.dev\/book|tinyurl\.com|bit\.ly|hpasoj|154\.82\.|adready\.vip|thlink\.cc)/i,
     /(linkvertise|ouo\.io|ouo\.press|megaurl|shorturl|1short|traffic|adbull|shrinke|exe\.io)/i,
     /(adsterra|popads|propellerads|clickadu|yllix|exoclick|trafficstars|juicyads|hilltopads|popcash|acquirecardedsullen|badlandlispyippee|astonishlandmass)/i,
     /(delivery|syndication|revenue|onclick|popunder|clickserve)/i,
     /\/ads\/(cat-|pop-|.*banner|.*gif|.*mp4|78win|78-new)/i,
+    /(newbanner|newbanner2025|newbanner2026|i9new|treeb|bonew|vuanew|ainew|gogonew|hinew|svnew|Lu728x90|GO8-|okok\d+|m66\d+x\d+)/i,
     /quang[\s_-]*cao/i,
     /track(er|ing)?\./i
   ];
@@ -143,6 +186,59 @@
         img[src*="cm88"],
         video[src*="cm88"],
         source[src*="cm88"],
+        img[src*="newbanner"],
+        img[src*="i9new"],
+        img[src*="treeb"],
+        img[src*="bonew"],
+        img[src*="vuanew"],
+        img[src*="ainew"],
+        img[src*="gogonew"],
+        img[src*="hinew"],
+        img[src*="svnew"],
+        img[src*="Lu728x90"],
+        img[src*="GO8-"],
+        img[src*="okok"],
+        img[src*="m66"],
+        img[src*="ok9viplogo"],
+        /* Background image ad banners by attribute */
+        [style*="newbanner"],
+        [style*="i9new"],
+        [style*="bonew"],
+        [style*="m66"],
+        [style*="okok"],
+        [style*="treeb"],
+        /* Modal popups, dialogs & promotion backdrops */
+        .promotion-popup,
+        .promotion-popup-content,
+        .btn-promotion-close,
+        .first-pop,
+        .second-pop,
+        .third-pop,
+        .mimic-wrapper:has(.btn-goto-lixi),
+        .popup:has(img[alt*="No Ads" i]),
+        .no-ads,
+        /* Floating banners & catfishes (all tiers) */
+        .ad-floater,
+        .adbot,
+        .tier-2, .tier-3, .tier-4, .tier-5, .tier-6, .tier-7, .tier-8, .tier-9, .tier-10,
+        /* In-page component ads & sponsor blocks */
+        .component.ads,
+        .ads.pc,
+        .ads.normal,
+        .ads.landscape,
+        .ads.group,
+        .partner-me,
+        .guideline.partner,
+        /* Popunder links & invisible traps */
+        .popunder-link,
+        a[aria-label*="popunder" i],
+        a[class*="popunder"],
+        /* Video TVC & ad player overlays */
+        .video-ad-layer,
+        .video-ad,
+        .btn-video-ad,
+        .btn-skip-video,
+        /* Betting & affiliate links by href */
         a[href*="/ads/"],
         a[href*="cm88"],
         a[href*="789b"],
@@ -163,6 +259,19 @@
         a[href*="w88"],
         a[href*="new88"],
         a[href*="jun88"],
+        a[href*="ok9"],
+        a[href*="tin888"],
+        a[href*="bom88"],
+        a[href*="188lux"],
+        a[href*="vsbet"],
+        a[href*="6789x"],
+        a[href*="mv66"],
+        a[href*="vuabet"],
+        a[href*="ai88"],
+        a[href*="3bet"],
+        a[href*="go8"],
+        a[href*="i9bet"],
+        a[href*="i9.top"],
         /* Modal popups & banners by ID / attributes */
         [id*="-fixed-bottom-slot"],
         [id*="-bottom-banner"],
@@ -185,23 +294,37 @@
         .spot:has(a[href*="cm88"]),
         .spot:has(.video-ad-wrap),
         .spot:has(video.fxMid),
-        /* Parent containers wrapping ad anchors */
-        div:has(> a[href*="cm88"]),
-        div:has(a[href*="cm88"]),
-        div:has(> a[href*="789b"]),
-        div:has(> a[href*="linkroyal"]),
-        div:has(> a[href*="tinyurl.com"]),
-        div:has(> a[href*="bit.ly"]),
-        div:has(> a[href*="11bet"]),
-        div:has(> a[href*="fc88"]),
-        div:has(> a[href*="qq88"]),
-        div:has(> a[href*="hi88"]),
-        div:has(> a[href*="78win"]),
-        div:has(> a[href*="hpasoj"]),
-        div:has(> img[src*="/ads/"]),
-        div:has(> video[src*="/ads/"]),
-        div:has(> video:has(source[src*="/ads/"])),
-        div:has(> video:has(source[src*="cm88"])),
+        /* Parent containers wrapping ad anchors (scoped strictly away from media players) */
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="cm88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="789b"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="linkroyal"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="tinyurl.com"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="bit.ly"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="11bet"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="fc88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="qq88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="hi88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="78win"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="hpasoj"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="154.82."]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="ok9"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="tin888"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="bom88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="go8"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="vuabet"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="188lux"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="6789x"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="ai88"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="mv66"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="i9bet"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> a[href*="3bet"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> img[src*="/ads/"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> video[src*="/ads/"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> video:has(source[src*="/ads/"])),
+        div:not(.player-wrapper):not(:has(video#player)):has(> video:has(source[src*="cm88"])),
+        div:not(.player-wrapper):not(:has(video#player)):has(> img[src*="newbanner"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> img[src*="okok"]),
+        div:not(.player-wrapper):not(:has(video#player)):has(> img[src*="treeb"]),
         /* Stream Guard AdBlock notice modal / overlay neutralization */
         .stream-guard:not([data-session-lock="true"]) {
           display: none !important;
@@ -220,6 +343,25 @@
           position: absolute !important;
           top: -9999px !important;
           left: -9999px !important;
+        }
+
+        /* CRITICAL OVERRIDE: Guarantee real video player containers are ALWAYS visible */
+        .player-wrapper,
+        .player-wrapper #player,
+        .player-wrapper .plyr,
+        .player-wrapper .plyr--video,
+        .player-wrapper .plyr__video-wrapper {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          position: relative !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
         }
       `;
       (document.head || document.documentElement).appendChild(style);
@@ -511,7 +653,7 @@
       return rect;
     };
 
-    // 7.4 Stream Guard Network Probe Defuser (Simulate ad_header.js load & fetch)
+    // 7.4 Stream Guard & Malicious Ad Script Neutralizer (Simulate ad_header.js & drop ad scripts)
     const origScriptSrcDesc = Object.getOwnPropertyDescriptor(scriptProto, 'src');
     if (origScriptSrcDesc && origScriptSrcDesc.set && origScriptSrcDesc.get) {
       Object.defineProperty(scriptProto, 'src', {
@@ -519,16 +661,22 @@
           return origScriptSrcDesc.get.call(this);
         },
         set(url) {
-          if (typeof url === 'string' && /ad_header\.js/i.test(url)) {
-            const verMatch = url.match(/ver=([a-zA-Z0-9_-]+)/);
-            const ver = verMatch ? verMatch[1] : 'guard-7';
-            this.setAttribute('data-stream-check', ver);
-            setTimeout(() => {
-              if (typeof this.onload === 'function') {
-                try { this.onload(new Event('load')); } catch(e) {}
-              }
-              this.dispatchEvent(new Event('load'));
-            }, 0);
+          if (typeof url === 'string') {
+            if (/minijumb\.js|adsview\.js/i.test(url)) {
+              console.warn('[AdBlockShield] Neutralized malicious ad script execution:', url);
+              return;
+            }
+            if (/ad_header\.js/i.test(url)) {
+              const verMatch = url.match(/ver=([a-zA-Z0-9_-]+)/);
+              const ver = verMatch ? verMatch[1] : 'guard-7';
+              this.setAttribute('data-stream-check', ver);
+              setTimeout(() => {
+                if (typeof this.onload === 'function') {
+                  try { this.onload(new Event('load')); } catch(e) {}
+                }
+                this.dispatchEvent(new Event('load'));
+              }, 0);
+            }
           }
           return origScriptSrcDesc.set.call(this, url);
         },
@@ -593,7 +741,7 @@
   // 8. Continuous DOM Cleaner: Target First-Party Ad Components & Overlays Safely
   function cleanAdsAndOverlays() {
     // A. Clean ad images, videos, and their containers
-    document.querySelectorAll('img[src*="/ads/"], video[src*="/ads/"], img[src*="cm88"], video[src*="cm88"], source[src*="cm88"], source[src*="/ads/"]').forEach(media => {
+    document.querySelectorAll('img[src*="/ads/"], video[src*="/ads/"], img[src*="cm88"], video[src*="cm88"], source[src*="cm88"], source[src*="/ads/"], img[src*="newbanner"], img[src*="i9new"], img[src*="treeb"], img[src*="bonew"], img[src*="vuanew"], img[src*="ainew"], img[src*="gogonew"], img[src*="hinew"], img[src*="svnew"], img[src*="Lu728x90"], img[src*="GO8-"], img[src*="okok"], img[src*="m66"], img[src*="ok9viplogo"]').forEach(media => {
       const target = media.tagName === 'SOURCE' ? (media.parentElement || media) : media;
       hideSafely(target);
       let p = target.parentElement;
@@ -603,29 +751,44 @@
           hideSafely(p.parentElement);
         }
       }
-      const wrap = target.closest && target.closest('.video-ad-wrap, .fxMidWrap');
+      const wrap = target.closest && target.closest('.video-ad-wrap, .fxMidWrap, .ad-floater, .adbot, .component.ads, .promotion-popup');
       if (wrap) hideSafely(wrap);
     });
 
-    // B. Clean ad links by href
+    // B. Clean ad links by href and their modal/wrapper ancestors
     document.querySelectorAll('a').forEach(a => {
       const href = a.href || '';
       if (isSpamUrl(href)) {
         hideSafely(a);
-        if (a.parentElement && a.parentElement.children.length === 1) {
-          hideSafely(a.parentElement);
+        const modalWrap = a.closest && a.closest('.promotion-popup, .promotion-popup-content, .ad-floater, .adbot, .component.ads, .video-ad-wrap, .fxMidWrap');
+        if (modalWrap) {
+          hideSafely(modalWrap);
         }
-        const wrap = a.closest && a.closest('.video-ad-wrap, .fxMidWrap');
-        if (wrap) hideSafely(wrap);
+        if (a.parentElement && a.parentElement.children.length <= 2) {
+          hideSafely(a.parentElement);
+          if (a.parentElement.parentElement && (a.parentElement.parentElement.classList.contains('promotion-popup') || a.parentElement.parentElement.classList.contains('ad-floater'))) {
+            hideSafely(a.parentElement.parentElement);
+          }
+        }
       }
     });
 
-    // C. Clean ad slots by ID & aria-label & Stream Guard ad notice
-    document.querySelectorAll('[id*="bottom-slot"], [id*="bottom-banner"], [id*="banner-728x90"], .video-ad-wrap, .stream-guard:not([data-session-lock="true"]), [aria-label*="quang cao" i], [aria-label*="quảng cáo" i]').forEach(el => {
+    // C. Clean ad slots by ID, class & aria-label & Stream Guard ad notice
+    document.querySelectorAll('.promotion-popup, .promotion-popup-content, .ad-floater, .adbot, .popunder-link, .component.ads, .ads.pc, .ads.normal, .ads.landscape, .no-ads, [id*="bottom-slot"], [id*="bottom-banner"], [id*="banner-728x90"], .video-ad-wrap, .stream-guard:not([data-session-lock="true"]), [aria-label*="quang cao" i], [aria-label*="quảng cáo" i]').forEach(el => {
       hideSafely(el);
     });
 
-    // D. Clean transparent click shields
+    // D. Clean elements with inline background-image pointing to ad media
+    document.querySelectorAll('[style*="background-image"], [style*="background:"]').forEach(el => {
+      const style = el.getAttribute('style') || '';
+      if (/newbanner|i9new|bonew|m66|treeb|okok/i.test(style)) {
+        hideSafely(el);
+        const parentPop = el.closest && el.closest('.promotion-popup, .ad-floater');
+        if (parentPop) hideSafely(parentPop);
+      }
+    });
+
+    // E. Clean transparent click shields
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     document.querySelectorAll('div, a, span, section').forEach(node => {
