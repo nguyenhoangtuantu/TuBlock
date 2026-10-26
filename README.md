@@ -67,7 +67,7 @@
 Tuân thủ nghiêm ngặt **Điều 5(a) của Giấy phép GNU General Public License v3.0 (GPLv3)**, thông báo sửa đổi được ghi nhận công khai như sau:
 
 - **Thời gian thực hiện sửa đổi:** Tháng 09 – Tháng 10 năm 2026.
-- **Tác giả sửa đổi:** Nguyễn Hoàng Tuấn Tú (<its.nhtt@gmail.com>).
+- **Tác giả sửa đổi:** Nguyễn Hoàng Tuấn Tú.
 - **Chi tiết các phần can thiệp:**
   - `manifest.json`: Tái định danh thương hiệu TuBlock kèm thông báo tác giả gốc; tích hợp content script bảo vệ `adblock-shield-main.js`; cấu hình tự động bật các ruleset bộ lọc ABPVN trong `declarative_net_request`.
   - `adblock-shield-main.js`: Bổ sung module bảo vệ chuyên dụng chống popunder, tab-under, overlay và first-party ads (được cấp phép theo GPLv3).
