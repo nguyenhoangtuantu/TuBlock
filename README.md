@@ -129,7 +129,7 @@ Tuân thủ nghiêm ngặt **Điều 5(a) của Giấy phép GNU General Public 
 **TuBlock** is a derivative work based on [AdBlock](https://getadblock.com/) (Copyright © Adblock, Inc. and eyeo GmbH). In full compliance with **Section 5(a) of the GNU General Public License v3.0 (GPLv3)**, the notices of modifications are stated below:
 
 - **Modification Date:** September – October 2026
-- **Modified by:** Nguyễn Hoàng Tuấn Tú (<its.nhtt@gmail.com>)
+- **Modified by:** Nguyễn Hoàng Tuấn Tú
 - **Summary of Modifications:**
   - `manifest.json`: Rebranded to TuBlock with clear derivative attribution; registered custom shield content script (`adblock-shield-main.js`); enabled ABPVN and regional DNR rulesets by default.
   - `adblock-shield-main.js`: Created and integrated a dedicated GPLv3 anti-circumvention engine running in `MAIN` world at `document_start`.
